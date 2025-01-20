@@ -5,7 +5,7 @@ services:
     build:
       context: .
       args:
-        - DEV=true
+        DEV: "true"
     ports:
       - "5500:5500"
     volumes:
@@ -14,13 +14,16 @@ services:
       sh -c "python manage.py wait_for_db &&
              python manage.py migrate &&
              python manage.py runserver 0.0.0.0:5500"
-        environment:
-      - DB_HOST: db
-      - DB_NAME: devdb
-      - DB_USER: devuser
-      - DB_PASS: changeme
+    environment:
+      DB_HOST: db
+      DB_NAME: devdb
+      DB_USER: devuser
+      DB_PASS: changeme
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
 
   db:
     image: postgres:13-alpine
@@ -30,6 +33,17 @@ services:
       POSTGRES_DB: devdb
       POSTGRES_USER: devuser
       POSTGRES_PASSWORD: changeme
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
 
 volumes:
   dev-db-data:
+
+networks:
+  app-network:
+    driver: bridge
